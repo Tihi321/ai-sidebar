@@ -8,18 +8,18 @@ Requested behavior: split mode should open assistant in the **same browser windo
 Chrome extension APIs do **not** currently expose a reliable method to programmatically activate native Chromium "Split View" layout.
 
 ## Approved Direction
-Use a same-window tab strategy that is compatible with native split-view usage:
-- Open assistant as an adjacent tab in the current window
-- Clicking another assistant replaces the tracked assistant tab URL/content
+Use a navigate-active-tab strategy that is compatible with native split-view usage:
+- Assume user has already set up browser split view (right-click tab → "New split view")
+- Clicking an assistant navigates the **active tab** to the assistant URL (first time)
+- Clicking another assistant replaces the tracked assistant tab URL
 - Separate close action closes the tracked split assistant tab
-- User can apply native Chromium split view manually on the two tabs
-- Open/replace should focus assistant tab after action
+- One-time toast hint shown to remind user about split view setup
 
 ## Scope
-1. Replace popup split behavior with same-window adjacent-tab behavior.
+1. Replace tab-creation split behavior with active-tab navigation.
 2. Add replace behavior per window for split links:
-   - If no tracked assistant tab exists → open adjacent assistant tab
-   - If tracked assistant tab exists → replace it with selected assistant (prefer tab URL update; fallback recreate)
+   - If no tracked assistant tab exists → navigate active tab to assistant URL and track it
+   - If tracked assistant tab exists → update its URL (prefer tab URL update; fallback recreate)
    - No close-on-link-click behavior
 3. Add explicit close action:
    - `Close Assistant Split View` button closes tracked assistant split tab for current window
@@ -40,8 +40,9 @@ Use a same-window tab strategy that is compatible with native split-view usage:
   1. Get active tab + window
   2. Check tracked assistant session for that window
   3. If tracked assistant tab exists and is valid → update it to selected link URL and activate
-  4. Else create assistant tab adjacent (`index = activeTab.index + 1`, `active: true`), store session
+  4. Else navigate the active tab to assistant URL, track it as assistant tab
   5. Keep `assistantLinkId` synced to selected link
+  6. Show one-time toast hint about setting up browser split view
 - Add explicit close handler:
   - Close tracked assistant tab for current window, then clear session
 - Add cleanup listeners:

@@ -115,8 +115,8 @@ function renderLinks(links: AILink[]) {
 
 async function openOrReplaceSplitTab(link: AILink) {
   const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true })
-  if (!activeTab?.windowId) {
-    showToast('No active window found')
+  if (!activeTab?.windowId || !activeTab.id) {
+    showToast('No active tab found')
     return
   }
 
@@ -139,26 +139,14 @@ async function openOrReplaceSplitTab(link: AILink) {
     }
   }
 
-  const createProps: chrome.tabs.CreateProperties = {
-    windowId,
-    url: link.url,
-    active: true,
-  }
-  if (typeof activeTab.index === 'number') {
-    createProps.index = activeTab.index + 1
-  }
-
-  const createdTab = await chrome.tabs.create(createProps)
-  if (!createdTab.id) {
-    showToast('Failed to open split tab')
-    return
-  }
-
+  // Navigate the active tab to the assistant URL (assumes user has split view set up)
+  await chrome.tabs.update(activeTab.id, { url: link.url })
   await setSplitSession({
     windowId,
-    assistantTabId: createdTab.id,
+    assistantTabId: activeTab.id,
     assistantLinkId: link.id,
   })
+  showToast('💡 Use browser split view for side-by-side layout')
   await refreshActiveSplitState()
   renderLinks(linksCache)
 }
