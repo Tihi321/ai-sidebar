@@ -1,4 +1,4 @@
-import type { AILink } from '../shared/types'
+import type { AILink, AILinkOpenMode } from '../shared/types'
 import { getLinks, saveLinks, getPromptTemplate, savePromptTemplate } from '../shared/storage'
 import { DEFAULT_PROMPT_TEMPLATE } from '../shared/constants'
 
@@ -8,6 +8,7 @@ const resetTemplateBtn = document.getElementById('reset-template-btn') as HTMLBu
 const linksList = document.getElementById('links-list') as HTMLDivElement
 const newIconInput = document.getElementById('new-icon') as HTMLInputElement
 const newNameInput = document.getElementById('new-name') as HTMLInputElement
+const newOpenModeInput = document.getElementById('new-open-mode') as HTMLSelectElement
 const newUrlInput = document.getElementById('new-url') as HTMLInputElement
 const addLinkBtn = document.getElementById('add-link-btn') as HTMLButtonElement
 const toast = document.getElementById('toast') as HTMLDivElement
@@ -34,6 +35,10 @@ function renderLinks() {
         <span class="link-item-url">${link.url}</span>
       </span>
       <span class="link-item-actions">
+        <select class="mode-select" data-action="mode" data-index="${index}" title="Open mode">
+          <option value="split" ${link.openMode === 'split' ? 'selected' : ''}>Split</option>
+          <option value="embed" ${link.openMode === 'embed' ? 'selected' : ''}>Embed</option>
+        </select>
         <button class="order-btn" data-action="up" data-index="${index}" ${index === 0 ? 'disabled' : ''} title="Move up">↑</button>
         <button class="order-btn" data-action="down" data-index="${index}" ${index === links.length - 1 ? 'disabled' : ''} title="Move down">↓</button>
         <button class="btn btn-danger" data-action="delete" data-index="${index}" title="Remove">✕</button>
@@ -42,9 +47,9 @@ function renderLinks() {
     linksList.appendChild(item)
   })
 
-  linksList.querySelectorAll('button[data-action]').forEach(btn => {
-    btn.addEventListener('click', async (e) => {
-      const el = e.currentTarget as HTMLButtonElement
+  linksList.querySelectorAll('button[data-action]').forEach(control => {
+    control.addEventListener('click', async (e) => {
+      const el = e.currentTarget as HTMLElement
       const action = el.dataset.action
       const index = parseInt(el.dataset.index ?? '0', 10)
 
@@ -56,6 +61,16 @@ function renderLinks() {
         [links[index], links[index + 1]] = [links[index + 1], links[index]]
       }
 
+      await saveLinks(links)
+      renderLinks()
+    })
+  })
+
+  linksList.querySelectorAll('select[data-action="mode"]').forEach(control => {
+    control.addEventListener('change', async (e) => {
+      const el = e.currentTarget as HTMLSelectElement
+      const index = parseInt(el.dataset.index ?? '0', 10)
+      links[index].openMode = el.value as AILinkOpenMode
       await saveLinks(links)
       renderLinks()
     })
@@ -85,6 +100,7 @@ async function init() {
   addLinkBtn.addEventListener('click', async () => {
     const icon = newIconInput.value.trim() || '🔗'
     const name = newNameInput.value.trim()
+    const openMode = newOpenModeInput.value as AILinkOpenMode
     const url = newUrlInput.value.trim()
 
     if (!name || !url) { showToast('Name and URL are required'); return }
@@ -95,6 +111,7 @@ async function init() {
       name,
       url,
       icon,
+      openMode,
     }
     links.push(newLink)
     await saveLinks(links)
@@ -102,6 +119,7 @@ async function init() {
 
     newIconInput.value = ''
     newNameInput.value = ''
+    newOpenModeInput.value = 'split'
     newUrlInput.value = ''
     showToast(`✓ "${name}" added`)
   })

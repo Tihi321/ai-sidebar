@@ -22,6 +22,7 @@
   "permissions": [
     "sidePanel",
     "activeTab",
+    "windows",
     "storage",
     "clipboardWrite",
     "contextMenus"
