@@ -5,10 +5,12 @@ A Chrome extension that gives you quick access to AI assistants (ChatGPT, Perple
 ## Features
 
 - **Side Panel Hub** — Chrome Side Panel API powers a persistent sidebar with your AI assistant links
-- **One-Click AI Access** — Click any configured link to open the AI service in a new tab
+- **Per-Link Open Mode** — Each assistant can open as **Embed in side panel** or **Split view popup**
+- **Embedded Assistant Viewer** — For compatible sites, assistants can render directly inside the side panel with quick Back / Split / Tab controls
+- **Split View Popup** — Opens assistant in a right-side popup while keeping your current page visible on the left
 - **Page Context Injection** — "Copy Page Context" button copies a prompt template with the current tab's URL to your clipboard, ready to paste into any AI chat
 - **Customizable Prompt Templates** — Edit the default prompt (`"Use this website as context: {url}"`) from the options page; saved locally with `{url}` replaced at copy time
-- **Link Management** — Add, remove, and reorder AI assistant links via the options page
+- **Link Management** — Add, remove, reorder, and set open mode per assistant via the options page
 - **Toggle & Shortcut** — Click the extension icon or press `Ctrl+Shift+Y` (`Cmd+Shift+Y` on Mac) to toggle the side panel
 - **Context Menu** — Right-click any page → "Copy page context prompt" to copy context without opening the panel
 - **Dark/Light Theme** — Automatically follows your system preference
@@ -65,10 +67,12 @@ node scripts/generate-icons.mjs
 ## Usage
 
 1. Click the **AI Sidebar icon** (or press `Ctrl+Shift+Y`) to open the side panel
-2. Click any **AI assistant button** to open it in a new tab
+2. Click an **AI assistant button**:
+   - `split` mode opens a right-side popup next to your current page
+   - `embed` mode opens the assistant inside the side panel viewer
 3. On the page you want to share with the AI, click **"Copy Page Context"** in the side panel
 4. The prompt (with the current URL) is now in your clipboard — paste it into the AI chat
-5. To customize: click the **⚙️ settings** icon → edit links or change the prompt template
+5. To customize: click the **⚙️ settings** icon → edit links, choose open mode per link, or change the prompt template
 
 ## Commit Convention
 
