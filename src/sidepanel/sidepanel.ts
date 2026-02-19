@@ -1,5 +1,5 @@
 import type { AILink } from '../shared/types'
-import { getLinks, getPromptTemplate } from '../shared/storage'
+import { clearPendingPrompt, getLinks, getPendingPrompt, getPromptTemplate } from '../shared/storage'
 
 const linksList = document.getElementById('links-list') as HTMLDivElement
 const copyContextBtn = document.getElementById('copy-context-btn') as HTMLButtonElement
@@ -35,6 +35,17 @@ function renderLinks(links: AILink[]) {
   }
 }
 
+async function copyPromptToClipboard(prompt: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(prompt)
+    showToast('✓ Context copied to clipboard')
+    return true
+  } catch {
+    showToast('Failed to copy — check clipboard permissions')
+    return false
+  }
+}
+
 async function copyPageContext() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
   if (!tab?.url) {
@@ -43,11 +54,15 @@ async function copyPageContext() {
   }
   const template = await getPromptTemplate()
   const prompt = template.replace('{url}', tab.url)
-  try {
-    await navigator.clipboard.writeText(prompt)
-    showToast('✓ Context copied to clipboard')
-  } catch {
-    showToast('Failed to copy — check clipboard permissions')
+  await copyPromptToClipboard(prompt)
+}
+
+async function handlePendingPrompt() {
+  const pendingPrompt = await getPendingPrompt()
+  if (!pendingPrompt) return
+  const copied = await copyPromptToClipboard(pendingPrompt)
+  if (copied) {
+    await clearPendingPrompt()
   }
 }
 
@@ -71,13 +86,15 @@ async function init() {
   // Listen for prompt copy requests from service worker
   chrome.runtime.onMessage.addListener((message) => {
     if (message.type === 'COPY_PROMPT' && message.payload) {
-      navigator.clipboard.writeText(message.payload as string).then(() => {
-        showToast('✓ Context copied to clipboard')
-      }).catch(() => {
-        showToast('Failed to copy context')
+      copyPromptToClipboard(message.payload as string).then((copied) => {
+        if (copied) {
+          clearPendingPrompt()
+        }
       })
     }
   })
+
+  await handlePendingPrompt()
 }
 
 init()

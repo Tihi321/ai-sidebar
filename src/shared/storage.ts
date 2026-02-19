@@ -18,3 +18,16 @@ export async function getPromptTemplate(): Promise<string> {
 export async function savePromptTemplate(template: string): Promise<void> {
   await chrome.storage.local.set({ [STORAGE_KEYS.PROMPT_TEMPLATE]: template })
 }
+
+export async function getPendingPrompt(): Promise<string | null> {
+  const result = await chrome.storage.local.get(STORAGE_KEYS.PENDING_PROMPT)
+  return result[STORAGE_KEYS.PENDING_PROMPT] ?? null
+}
+
+export async function setPendingPrompt(prompt: string): Promise<void> {
+  await chrome.storage.local.set({ [STORAGE_KEYS.PENDING_PROMPT]: prompt })
+}
+
+export async function clearPendingPrompt(): Promise<void> {
+  await chrome.storage.local.remove(STORAGE_KEYS.PENDING_PROMPT)
+}

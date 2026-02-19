@@ -12,4 +12,5 @@ export const DEFAULT_PROMPT_TEMPLATE = 'Use this website as context: {url}'
 export const STORAGE_KEYS = {
   AI_LINKS: 'ai_links',
   PROMPT_TEMPLATE: 'prompt_template',
+  PENDING_PROMPT: 'pending_prompt',
 } as const

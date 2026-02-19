@@ -1,4 +1,4 @@
-import { getPromptTemplate } from '../shared/storage'
+import { getPromptTemplate, setPendingPrompt } from '../shared/storage'
 
 chrome.sidePanel
   .setPanelBehavior({ openPanelOnActionClick: true })
@@ -22,11 +22,16 @@ chrome.commands.onCommand.addListener((command) => {
 })
 
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
-  if (info.menuItemId !== 'add-page-context' || !tab?.url) return
+  if (info.menuItemId !== 'add-page-context') return
+  const url = tab?.url ?? info.linkUrl
+  if (!url) return
   const template = await getPromptTemplate()
-  const prompt = template.replace('{url}', tab.url)
-  // Send to side panel to copy to clipboard
+  const prompt = template.replace('{url}', url)
+  await setPendingPrompt(prompt)
+  if (tab?.id) {
+    await chrome.sidePanel.open({ tabId: tab.id }).catch(() => undefined)
+  }
   chrome.runtime.sendMessage({ type: 'COPY_PROMPT', payload: prompt }).catch(() => {
-    // Side panel may not be open; ignore error
+    // Side panel may not be open yet; pending prompt will be handled on panel init.
   })
 })
