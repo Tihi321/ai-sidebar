@@ -13,15 +13,32 @@
       <button id="settings-btn" class="icon-btn" title="Settings" aria-label="Open settings">⚙️</button>
     </header>
 
-    <section class="context-section">
-      <button id="copy-context-btn" class="context-btn">
-        <span class="btn-icon">📋</span>
-        <span>Copy Page Context</span>
-      </button>
+    <section id="home-view" class="home-view">
+      <section class="context-section">
+        <button id="copy-context-btn" class="context-btn">
+          <span class="btn-icon">📋</span>
+          <span>Copy Page Context</span>
+        </button>
+      </section>
+
+      <section class="links-section">
+        <div id="links-list" class="links-list"></div>
+      </section>
     </section>
 
-    <section class="links-section">
-      <div id="links-list" class="links-list"></div>
+    <section id="viewer-view" class="viewer-view hidden">
+      <div class="viewer-toolbar">
+        <button id="back-btn" class="viewer-btn">← Back</button>
+        <span id="viewer-title" class="viewer-title"></span>
+        <div class="viewer-actions">
+          <button id="open-split-btn" class="viewer-btn">Split</button>
+          <button id="open-tab-btn" class="viewer-btn">Tab</button>
+        </div>
+      </div>
+      <iframe id="assistant-frame" class="assistant-frame" referrerpolicy="no-referrer" title="Assistant viewer"></iframe>
+      <div class="embed-help">
+        If this assistant blocks embed, use <strong>Split</strong> to open it next to your page.
+      </div>
     </section>
 
     <div id="toast" class="toast" aria-live="polite"></div>
