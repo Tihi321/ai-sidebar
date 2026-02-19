@@ -3,11 +3,50 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AI Sidebar Options</title>
+  <title>AI Sidebar — Settings</title>
   <link rel="stylesheet" href="options.css" />
 </head>
 <body>
-  <div id="app">Loading...</div>
+  <div id="app">
+    <header class="page-header">
+      <h1>AI Sidebar Settings</h1>
+    </header>
+
+    <main class="page-content">
+      <!-- Prompt Template Section -->
+      <section class="card">
+        <h2 class="section-title">Context Prompt Template</h2>
+        <p class="section-desc">
+          When you click "Copy Page Context", this template is copied with <code>{url}</code> replaced by the current page URL.
+        </p>
+        <textarea id="template-input" class="template-textarea" rows="3" placeholder="Use this website as context: {url}"></textarea>
+        <div class="row gap-8">
+          <button id="save-template-btn" class="btn btn-primary">Save Template</button>
+          <button id="reset-template-btn" class="btn btn-ghost">Reset to Default</button>
+        </div>
+      </section>
+
+      <!-- AI Links Section -->
+      <section class="card">
+        <h2 class="section-title">AI Assistant Links</h2>
+        <p class="section-desc">Add, remove, or reorder the AI assistants shown in the side panel.</p>
+
+        <div id="links-list" class="links-list"></div>
+
+        <div class="add-link-form" id="add-link-form">
+          <h3 class="form-title">Add New Link</h3>
+          <div class="form-row">
+            <input id="new-icon" class="input" type="text" placeholder="Icon (emoji)" maxlength="4" />
+            <input id="new-name" class="input" type="text" placeholder="Name (e.g. ChatGPT)" />
+          </div>
+          <input id="new-url" class="input" type="url" placeholder="URL (e.g. https://chatgpt.com)" />
+          <button id="add-link-btn" class="btn btn-primary">Add Link</button>
+        </div>
+      </section>
+    </main>
+
+    <div id="toast" class="toast" aria-live="polite"></div>
+  </div>
   <script type="module" src="options.ts"></script>
 </body>
 </html>
