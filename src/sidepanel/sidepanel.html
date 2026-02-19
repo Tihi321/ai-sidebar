@@ -7,7 +7,25 @@
   <link rel="stylesheet" href="sidepanel.css" />
 </head>
 <body>
-  <div id="app">Loading...</div>
+  <div id="app">
+    <header class="header">
+      <span class="header-title">AI Sidebar</span>
+      <button id="settings-btn" class="icon-btn" title="Settings" aria-label="Open settings">⚙️</button>
+    </header>
+
+    <section class="context-section">
+      <button id="copy-context-btn" class="context-btn">
+        <span class="btn-icon">📋</span>
+        <span>Copy Page Context</span>
+      </button>
+    </section>
+
+    <section class="links-section">
+      <div id="links-list" class="links-list"></div>
+    </section>
+
+    <div id="toast" class="toast" aria-live="polite"></div>
+  </div>
   <script type="module" src="sidepanel.ts"></script>
 </body>
 </html>
