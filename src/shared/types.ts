@@ -8,6 +8,12 @@ export interface AILink {
   openMode: AILinkOpenMode
 }
 
+export interface SplitSession {
+  windowId: number
+  assistantTabId: number
+  assistantLinkId: string
+}
+
 export interface PromptTemplate {
   template: string
 }

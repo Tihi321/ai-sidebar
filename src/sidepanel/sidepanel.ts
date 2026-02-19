@@ -1,8 +1,18 @@
-import type { AILink } from '../shared/types'
-import { clearPendingPrompt, getLinks, getPendingPrompt, getPromptTemplate } from '../shared/storage'
+import type { AILink, SplitSession } from '../shared/types'
+import {
+  clearPendingPrompt,
+  clearSplitSession,
+  clearSplitSessionByTabId,
+  getLinks,
+  getPendingPrompt,
+  getPromptTemplate,
+  getSplitSession,
+  setSplitSession,
+} from '../shared/storage'
 
 const linksList = document.getElementById('links-list') as HTMLDivElement
 const copyContextBtn = document.getElementById('copy-context-btn') as HTMLButtonElement
+const closeSplitBtn = document.getElementById('close-split-btn') as HTMLButtonElement
 const settingsBtn = document.getElementById('settings-btn') as HTMLButtonElement
 const toast = document.getElementById('toast') as HTMLDivElement
 const homeView = document.getElementById('home-view') as HTMLElement
@@ -15,6 +25,9 @@ const openTabBtn = document.getElementById('open-tab-btn') as HTMLButtonElement
 
 let toastTimer: ReturnType<typeof setTimeout> | null = null
 let currentViewerLink: AILink | null = null
+let linksCache: AILink[] = []
+let activeWindowId: number | null = null
+let activeSplitSession: SplitSession | null = null
 
 function showToast(message: string) {
   toast.textContent = message
@@ -38,60 +51,34 @@ function showViewer(link: AILink) {
   viewerView.classList.remove('hidden')
 }
 
-async function openInSplitView(url: string) {
+function updateSplitButtonState() {
+  closeSplitBtn.disabled = !activeSplitSession
+}
+
+async function refreshActiveSplitState() {
   const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true })
-  if (!activeTab?.windowId) {
-    await chrome.windows.create({ url, type: 'popup', focused: true })
+  activeWindowId = activeTab?.windowId ?? null
+  if (!activeWindowId) {
+    activeSplitSession = null
+    updateSplitButtonState()
     return
   }
 
-  const currentWindow = await chrome.windows.get(activeTab.windowId)
-  const { id, left, top, width, height } = currentWindow
-  if (!id || width === undefined || height === undefined) {
-    await chrome.windows.create({ url, type: 'popup', focused: true })
-    return
-  }
-
-  const windowLeft = left ?? 0
-  const windowTop = top ?? 0
-  const minMainWidth = 520
-  const minPopupWidth = 380
-  const maxPopupWidth = 760
-  let popupWidth = Math.round(width * 0.38)
-  popupWidth = Math.max(minPopupWidth, Math.min(maxPopupWidth, popupWidth))
-  let mainWidth = width - popupWidth
-
-  if (mainWidth < minMainWidth) {
-    mainWidth = minMainWidth
-    popupWidth = width - minMainWidth
-  }
-
-  if (popupWidth < minPopupWidth) {
-    await chrome.windows.create({ url, type: 'popup', focused: true })
+  const session = await getSplitSession(activeWindowId)
+  if (!session) {
+    activeSplitSession = null
+    updateSplitButtonState()
     return
   }
 
   try {
-    await chrome.windows.update(id, {
-      state: 'normal',
-      left: windowLeft,
-      top: windowTop,
-      width: mainWidth,
-      height,
-      focused: true,
-    })
-    await chrome.windows.create({
-      url,
-      type: 'popup',
-      left: windowLeft + mainWidth,
-      top: windowTop,
-      width: popupWidth,
-      height,
-      focused: true,
-    })
+    await chrome.tabs.get(session.assistantTabId)
+    activeSplitSession = session
   } catch {
-    await chrome.windows.create({ url, type: 'popup', focused: true })
+    await clearSplitSession(activeWindowId)
+    activeSplitSession = null
   }
+  updateSplitButtonState()
 }
 
 function modeLabel(mode: AILink['openMode']): string {
@@ -101,8 +88,10 @@ function modeLabel(mode: AILink['openMode']): string {
 function renderLinks(links: AILink[]) {
   linksList.innerHTML = ''
   for (const link of links) {
+    const isOpenSplit =
+      link.openMode === 'split' && activeSplitSession?.assistantLinkId === link.id
     const card = document.createElement('button')
-    card.className = 'link-card'
+    card.className = `link-card${isOpenSplit ? ' is-open' : ''}`
     card.innerHTML = `
       <span class="link-icon">${link.icon}</span>
       <span class="link-info">
@@ -110,6 +99,7 @@ function renderLinks(links: AILink[]) {
         <span class="link-url">${link.url.replace(/^https?:\/\//, '')}</span>
       </span>
       <span class="link-mode">${modeLabel(link.openMode)}</span>
+      ${isOpenSplit ? '<span class="link-open-indicator">open</span>' : ''}
       <span class="link-arrow">↗</span>
     `
     card.addEventListener('click', async () => {
@@ -117,10 +107,77 @@ function renderLinks(links: AILink[]) {
         showViewer(link)
         return
       }
-      await openInSplitView(link.url)
+      await openOrReplaceSplitTab(link)
     })
     linksList.appendChild(card)
   }
+}
+
+async function openOrReplaceSplitTab(link: AILink) {
+  const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true })
+  if (!activeTab?.windowId) {
+    showToast('No active window found')
+    return
+  }
+
+  const windowId = activeTab.windowId
+  const existingSession = await getSplitSession(windowId)
+
+  if (existingSession) {
+    try {
+      await chrome.tabs.update(existingSession.assistantTabId, { url: link.url, active: true })
+      await setSplitSession({
+        windowId,
+        assistantTabId: existingSession.assistantTabId,
+        assistantLinkId: link.id,
+      })
+      await refreshActiveSplitState()
+      renderLinks(linksCache)
+      return
+    } catch {
+      await clearSplitSession(windowId)
+    }
+  }
+
+  const createProps: chrome.tabs.CreateProperties = {
+    windowId,
+    url: link.url,
+    active: true,
+  }
+  if (typeof activeTab.index === 'number') {
+    createProps.index = activeTab.index + 1
+  }
+
+  const createdTab = await chrome.tabs.create(createProps)
+  if (!createdTab.id) {
+    showToast('Failed to open split tab')
+    return
+  }
+
+  await setSplitSession({
+    windowId,
+    assistantTabId: createdTab.id,
+    assistantLinkId: link.id,
+  })
+  await refreshActiveSplitState()
+  renderLinks(linksCache)
+}
+
+async function closeSplitAssistantTab() {
+  await refreshActiveSplitState()
+  if (!activeSplitSession || !activeWindowId) {
+    showToast('No split assistant tab to close')
+    return
+  }
+
+  try {
+    await chrome.tabs.remove(activeSplitSession.assistantTabId)
+  } catch {
+    // ignore if already closed
+  }
+  await clearSplitSession(activeWindowId)
+  await refreshActiveSplitState()
+  renderLinks(linksCache)
 }
 
 async function copyPromptToClipboard(prompt: string): Promise<boolean> {
@@ -154,12 +211,40 @@ async function handlePendingPrompt() {
   }
 }
 
+function setupSplitStateListeners() {
+  chrome.tabs.onRemoved.addListener((tabId) => {
+    clearSplitSessionByTabId(tabId).then(async () => {
+      await refreshActiveSplitState()
+      renderLinks(linksCache)
+    })
+  })
+
+  chrome.windows.onRemoved.addListener((windowId) => {
+    clearSplitSession(windowId).then(async () => {
+      await refreshActiveSplitState()
+      renderLinks(linksCache)
+    })
+  })
+
+  chrome.tabs.onActivated.addListener(() => {
+    refreshActiveSplitState().then(() => renderLinks(linksCache))
+  })
+
+  chrome.windows.onFocusChanged.addListener(() => {
+    refreshActiveSplitState().then(() => renderLinks(linksCache))
+  })
+}
+
 async function init() {
-  const links = await getLinks()
-  renderLinks(links)
+  linksCache = await getLinks()
+  await refreshActiveSplitState()
+  renderLinks(linksCache)
   showHomeView()
 
   copyContextBtn.addEventListener('click', copyPageContext)
+  closeSplitBtn.addEventListener('click', () => {
+    closeSplitAssistantTab().catch(() => undefined)
+  })
   settingsBtn.addEventListener('click', () => {
     chrome.runtime.openOptionsPage()
   })
@@ -170,12 +255,16 @@ async function init() {
   })
   openSplitBtn.addEventListener('click', async () => {
     if (!currentViewerLink) return
-    await openInSplitView(currentViewerLink.url)
+    await openOrReplaceSplitTab(currentViewerLink)
   })
 
   chrome.storage.onChanged.addListener((_changes, area) => {
     if (area === 'local') {
-      getLinks().then(renderLinks)
+      getLinks().then(async (links) => {
+        linksCache = links
+        await refreshActiveSplitState()
+        renderLinks(linksCache)
+      })
     }
   })
 
@@ -189,6 +278,7 @@ async function init() {
     }
   })
 
+  setupSplitStateListeners()
   await handlePendingPrompt()
 }
 

@@ -13,4 +13,5 @@ export const STORAGE_KEYS = {
   AI_LINKS: 'ai_links',
   PROMPT_TEMPLATE: 'prompt_template',
   PENDING_PROMPT: 'pending_prompt',
+  SPLIT_SESSIONS: 'split_sessions',
 } as const

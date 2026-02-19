@@ -1,4 +1,4 @@
-import type { AILink, AILinkOpenMode } from './types'
+import type { AILink, AILinkOpenMode, SplitSession } from './types'
 import { DEFAULT_AI_LINKS, DEFAULT_PROMPT_TEMPLATE, STORAGE_KEYS } from './constants'
 
 function normalizeOpenMode(mode: unknown): AILinkOpenMode {
@@ -24,6 +24,28 @@ function normalizeLink(raw: unknown, index: number): AILink | null {
 
 function hasOpenMode(link: unknown): boolean {
   return typeof link === 'object' && link !== null && 'openMode' in link
+}
+
+function getSplitStorageArea(): chrome.storage.StorageArea {
+  return chrome.storage.session ?? chrome.storage.local
+}
+
+function normalizeSplitSession(raw: unknown): SplitSession | null {
+  if (typeof raw !== 'object' || raw === null) return null
+  const record = raw as Record<string, unknown>
+  if (
+    typeof record.windowId !== 'number' ||
+    typeof record.assistantTabId !== 'number' ||
+    typeof record.assistantLinkId !== 'string' ||
+    !record.assistantLinkId
+  ) {
+    return null
+  }
+  return {
+    windowId: record.windowId,
+    assistantTabId: record.assistantTabId,
+    assistantLinkId: record.assistantLinkId,
+  }
 }
 
 export async function getLinks(): Promise<AILink[]> {
@@ -82,4 +104,50 @@ export async function setPendingPrompt(prompt: string): Promise<void> {
 
 export async function clearPendingPrompt(): Promise<void> {
   await chrome.storage.local.remove(STORAGE_KEYS.PENDING_PROMPT)
+}
+
+async function getSplitSessionMap(): Promise<Record<string, SplitSession>> {
+  const storage = getSplitStorageArea()
+  const result = await storage.get(STORAGE_KEYS.SPLIT_SESSIONS)
+  const rawMap = result[STORAGE_KEYS.SPLIT_SESSIONS]
+  if (typeof rawMap !== 'object' || rawMap === null) return {}
+
+  const normalized: Record<string, SplitSession> = {}
+  for (const [key, value] of Object.entries(rawMap as Record<string, unknown>)) {
+    const session = normalizeSplitSession(value)
+    if (session) normalized[key] = session
+  }
+  return normalized
+}
+
+async function saveSplitSessionMap(map: Record<string, SplitSession>): Promise<void> {
+  const storage = getSplitStorageArea()
+  await storage.set({ [STORAGE_KEYS.SPLIT_SESSIONS]: map })
+}
+
+export async function getSplitSession(windowId: number): Promise<SplitSession | null> {
+  const map = await getSplitSessionMap()
+  return map[String(windowId)] ?? null
+}
+
+export async function setSplitSession(session: SplitSession): Promise<void> {
+  const map = await getSplitSessionMap()
+  map[String(session.windowId)] = session
+  await saveSplitSessionMap(map)
+}
+
+export async function clearSplitSession(windowId: number): Promise<void> {
+  const map = await getSplitSessionMap()
+  delete map[String(windowId)]
+  await saveSplitSessionMap(map)
+}
+
+export async function clearSplitSessionByTabId(tabId: number): Promise<void> {
+  const map = await getSplitSessionMap()
+  for (const [key, value] of Object.entries(map)) {
+    if (value.assistantTabId === tabId) {
+      delete map[key]
+    }
+  }
+  await saveSplitSessionMap(map)
 }
