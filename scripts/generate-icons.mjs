@@ -25,19 +25,38 @@ function chunk(type, data) {
   return Buffer.concat([len, typeBytes, data, crcOut]);
 }
 
-function createPNG(size, r, g, b) {
+function isInsideRoundedRect(px, py, size, r) {
+  if (px < 0 || px > size || py < 0 || py > size) return false;
+  const cx = Math.max(r, Math.min(size - r, px));
+  const cy = Math.max(r, Math.min(size - r, py));
+  return (px - cx) ** 2 + (py - cy) ** 2 <= r * r;
+}
+
+function createIconPNG(size) {
   const sig = Buffer.from([137,80,78,71,13,10,26,10]);
   const ihdr = Buffer.alloc(13);
   ihdr.writeUInt32BE(size,0); ihdr.writeUInt32BE(size,4);
-  ihdr[8]=8; ihdr[9]=2; ihdr[10]=0; ihdr[11]=0; ihdr[12]=0;
-  const rowSize = size * 3;
+  ihdr[8]=8; ihdr[9]=6; ihdr[10]=0; ihdr[11]=0; ihdr[12]=0; // RGBA
+
+  const r = size * 0.22;
+  const rowSize = size * 4;
   const raw = Buffer.alloc(size * (1 + rowSize));
+
   for (let y = 0; y < size; y++) {
     const rs = y * (1 + rowSize);
     raw[rs] = 0;
     for (let x = 0; x < size; x++) {
-      const ps = rs + 1 + x * 3;
-      raw[ps] = r; raw[ps+1] = g; raw[ps+2] = b;
+      const ps = rs + 1 + x * 4;
+      // Gradient: top-left indigo (#6366f1) → bottom-right violet (#8b5cf6)
+      const t = (x + y) / (2 * size);
+      const red = Math.round(99 + t * (139 - 99));
+      const green = Math.round(102 + t * (92 - 102));
+      const blue = Math.round(241 + t * (246 - 241));
+      const inside = isInsideRoundedRect(x + 0.5, y + 0.5, size, r);
+      raw[ps]   = inside ? red   : 0;
+      raw[ps+1] = inside ? green : 0;
+      raw[ps+2] = inside ? blue  : 0;
+      raw[ps+3] = inside ? 255   : 0;
     }
   }
   return Buffer.concat([sig, chunk('IHDR',ihdr), chunk('IDAT',deflateSync(raw)), chunk('IEND',Buffer.alloc(0))]);
@@ -45,6 +64,6 @@ function createPNG(size, r, g, b) {
 
 mkdirSync('src/assets/icons', { recursive: true });
 for (const size of [16, 48, 128]) {
-  writeFileSync(`src/assets/icons/icon${size}.png`, createPNG(size, 99, 102, 241));
-  console.log(`Created icon${size}.png`);
+  writeFileSync(`src/assets/icons/icon${size}.png`, createIconPNG(size));
+  console.log(`Created icon${size}.png (${size}x${size})`);
 }
