@@ -8,6 +8,7 @@ A Chrome extension that gives you quick access to AI assistants (ChatGPT, Perple
 - **Per-Link Open Mode** — Each assistant can open as **Embed in side panel** or **Split view tab (same window)**
 - **Embedded Assistant Viewer** — For compatible sites, assistants can render directly inside the side panel with quick Back / Split / Tab controls
 - **Split View Tab Replace** — Split mode opens/updates one tracked assistant tab in the same window; clicking another assistant replaces that tab
+- **Split Target Picker** — "Use Current Tab as Assistant" lets you explicitly select which tab the split actions should control
 - **Dedicated Close Control** — "Close Assistant Split View" button closes the tracked split assistant tab
 - **Page Context Injection** — "Copy Page Context" button copies a prompt template with the current tab's URL to your clipboard, ready to paste into any AI chat
 - **Customizable Prompt Templates** — Edit the default prompt (`"Use this website as context: {url}"`) from the options page; saved locally with `{url}` replaced at copy time
@@ -68,13 +69,14 @@ node scripts/generate-icons.mjs
 ## Usage
 
 1. Click the **AI Sidebar icon** (or press `Ctrl+Shift+Y`) to open the side panel
-2. Click an **AI assistant button**:
+2. If using split mode, first open browser split view manually, activate the assistant-side tab, and click **Use Current Tab as Assistant**
+3. Click an **AI assistant button**:
    - `split` mode opens or replaces the assistant in a same-window split tab
    - `embed` mode opens the assistant inside the side panel viewer
-3. Use **Close Assistant Split View** when you want to close the split assistant tab
-4. On the page you want to share with the AI, click **"Copy Page Context"** in the side panel
-5. The prompt (with the current URL) is now in your clipboard — paste it into the AI chat
-6. To customize: click the **⚙️ settings** icon → edit links, choose open mode per link, or change the prompt template
+4. Use **Close Assistant Split View** when you want to close the split assistant tab
+5. On the page you want to share with the AI, click **"Copy Page Context"** in the side panel
+6. The prompt (with the current URL) is now in your clipboard — paste it into the AI chat
+7. To customize: click the **⚙️ settings** icon → edit links, choose open mode per link, or change the prompt template
 
 ## Commit Convention
 

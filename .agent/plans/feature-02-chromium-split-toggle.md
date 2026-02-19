@@ -82,3 +82,8 @@ Use a navigate-active-tab strategy that is compatible with native split-view usa
 ## Notes
 - This plan intentionally removes dependency on popup windows for split mode.
 - No API assumptions about native split-view automation are made.
+
+## Follow-up Update
+- Added explicit split target setup in sidebar: **Use Current Tab as Assistant**.
+- Split link clicks now require a tracked assistant tab and replace that tab only.
+- If no target is set, the user gets setup guidance instead of unexpected tab navigation.

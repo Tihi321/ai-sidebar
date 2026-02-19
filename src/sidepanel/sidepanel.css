@@ -104,6 +104,12 @@ body {
   gap: 8px;
 }
 
+.context-help {
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
 .context-btn {
   display: flex;
   align-items: center;

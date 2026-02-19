@@ -12,6 +12,7 @@ import {
 
 const linksList = document.getElementById('links-list') as HTMLDivElement
 const copyContextBtn = document.getElementById('copy-context-btn') as HTMLButtonElement
+const setSplitTargetBtn = document.getElementById('set-split-target-btn') as HTMLButtonElement
 const closeSplitBtn = document.getElementById('close-split-btn') as HTMLButtonElement
 const settingsBtn = document.getElementById('settings-btn') as HTMLButtonElement
 const toast = document.getElementById('toast') as HTMLDivElement
@@ -28,6 +29,7 @@ let currentViewerLink: AILink | null = null
 let linksCache: AILink[] = []
 let activeWindowId: number | null = null
 let activeSplitSession: SplitSession | null = null
+const MANUAL_SPLIT_LINK_ID = '__manual_split_target__'
 
 function showToast(message: string) {
   toast.textContent = message
@@ -115,8 +117,8 @@ function renderLinks(links: AILink[]) {
 
 async function openOrReplaceSplitTab(link: AILink) {
   const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true })
-  if (!activeTab?.windowId || !activeTab.id) {
-    showToast('No active tab found')
+  if (!activeTab?.windowId) {
+    showToast('No active window found')
     return
   }
 
@@ -139,16 +141,24 @@ async function openOrReplaceSplitTab(link: AILink) {
     }
   }
 
-  // Navigate the active tab to the assistant URL (assumes user has split view set up)
-  await chrome.tabs.update(activeTab.id, { url: link.url })
+  showToast('Set an assistant tab first: Use Current Tab as Assistant')
+}
+
+async function setCurrentTabAsSplitAssistant() {
+  const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true })
+  if (!activeTab?.windowId || !activeTab.id) {
+    showToast('No active tab found')
+    return
+  }
+
   await setSplitSession({
-    windowId,
+    windowId: activeTab.windowId,
     assistantTabId: activeTab.id,
-    assistantLinkId: link.id,
+    assistantLinkId: activeSplitSession?.assistantLinkId ?? MANUAL_SPLIT_LINK_ID,
   })
-  showToast('💡 Use browser split view for side-by-side layout')
   await refreshActiveSplitState()
   renderLinks(linksCache)
+  showToast('Assistant tab selected')
 }
 
 async function closeSplitAssistantTab() {
@@ -230,6 +240,9 @@ async function init() {
   showHomeView()
 
   copyContextBtn.addEventListener('click', copyPageContext)
+  setSplitTargetBtn.addEventListener('click', () => {
+    setCurrentTabAsSplitAssistant().catch(() => undefined)
+  })
   closeSplitBtn.addEventListener('click', () => {
     closeSplitAssistantTab().catch(() => undefined)
   })
